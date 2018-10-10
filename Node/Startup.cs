@@ -1,13 +1,11 @@
 ﻿using System;
-using System.Collections.Generic;
+using System.Collections.Specialized;
 using System.Linq;
-using System.Threading.Tasks;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.DependencyInjection;
-using static NetworkManager.Network;
-namespace Network
+namespace Node
 {
   public class Startup
   {
@@ -24,18 +22,20 @@ namespace Network
       {
         app.UseDeveloperExceptionPage();
       }
-
-      BlockchainManager.HookToNetwork.Initialize(NetworkManager.Setup.Network.MyAddress);
-      //NetworkManager.Network.Initialize();
+      System.Net.ServicePointManager.DefaultConnectionLimit = 10;
+      NetworkManager.Network.Test();
       app.Run(async (context) =>
       {
-        var Request = context.Request;
-        if (Request.Method == "POST")
+        if (context.Request.Method == "POST")
         {
-          var QueryString = Request.Query.ToDictionary(d => d.Key, d => d.Value.ToString());
-          var Form = Request.Form.ToDictionary(d => d.Key, d => d.Value.ToString());
+          var QueryString = new NameValueCollection();
+          foreach (var item in context.Request.Query)
+            QueryString.Add(item.Key, item.Value);
+          var Form = new NameValueCollection();
+          foreach (var item in context.Request.Form)
+            Form.Add(item.Key, item.Value);
           using (System.IO.Stream Stream = new System.IO.MemoryStream())
-            if (NetworkManager.Network.OnReceivesHttpRequest(QueryString, Form, out string ContentType, Stream))
+            if (NetworkManager.Network.OnReceivesHttpRequest(QueryString, Form, context.Connection.RemoteIpAddress.ToString(), out string ContentType, Stream))
             {
               context.Response.ContentType = ContentType;
               Stream.Position = 0;
@@ -46,6 +46,18 @@ namespace Network
         }
         await context.Response.WriteAsync("Online!");
       });
+
+      var MyAddress = NetworkManager.Setup.Network.MyAddress;
+      if (env.IsDevelopment())
+      {
+#if DEBUG
+        MyAddress = "http://localhost:55007";
+#elif DEBUGNETWORK
+      MyAddress = "http://localhost:55008";
+#endif
+      }
+      BlockchainManager.HookToNetwork.Initialize(MyAddress);
+      //NetworkManager.Network.Initialize();
     }
   }
 }
