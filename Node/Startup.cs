@@ -23,7 +23,18 @@ namespace Node
         app.UseDeveloperExceptionPage();
       }
       System.Net.ServicePointManager.DefaultConnectionLimit = 10;
-      NetworkManager.Network.Test();
+      String MyAddress = null;
+      if (env.IsDevelopment())
+      {
+#if DEBUG
+        MyAddress = "http://localhost:55007";
+#elif DEBUGNETWORK
+        MyAddress = "http://localhost:55008";
+#endif
+      }
+      var Network = BlockchainManager.HookToNetwork.Initialize(MyAddress);
+      //NetworkManager.Network.Initialize();
+      Network.Test();
       app.Run(async (context) =>
       {
         if (context.Request.Method == "POST")
@@ -47,17 +58,6 @@ namespace Node
         await context.Response.WriteAsync("Online!");
       });
 
-      var MyAddress = NetworkManager.Setup.Network.MyAddress;
-      if (env.IsDevelopment())
-      {
-#if DEBUG
-        MyAddress = "http://localhost:55007";
-#elif DEBUGNETWORK
-      MyAddress = "http://localhost:55008";
-#endif
-      }
-      BlockchainManager.HookToNetwork.Initialize(MyAddress);
-      //NetworkManager.Network.Initialize();
     }
   }
 }
